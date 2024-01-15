@@ -9,7 +9,7 @@ import skimage.transform
 import argparse
 from PIL import Image
 import imageio
-
+# testing shubha_new commit
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 

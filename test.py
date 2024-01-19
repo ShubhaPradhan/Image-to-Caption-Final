@@ -5,15 +5,15 @@ def run_caption_script():
     image_name = input("Enter the image name: ")
 
     # Construct the full path of the image
-    image_path = f"C:/Users/Asus/Downloads/ImagetoCaption-Project-/ImagetoCaption-Project-/Flicker8k_Dataset/{image_name}"
+    image_path = f"C:/work/Image-to-Caption-Final/Flickr8k_Dataset{image_name}"
 
     # Define the rest of the command
     command = [
         "python",
-        "C:/Users/Asus/Downloads/ImagetoCaption-Project-/ImagetoCaption-Project-/caption.py",
+        "C:/work/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar",
         "--img", image_path,
-        "--model", "C:/Users/Asus/Downloads/ImagetoCaption-Project-/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar",
-        "--word_map", "C:/Users/Asus/Downloads/ImagetoCaption-Project-/ImagetoCaption-Project-/Flickr8k_preprocessed/WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json",
+        "--model", "C:/work/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar",
+        "--word_map", "C:/work/Image-to-Caption-Final/Flickr8k_preprocessed/WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json",
         "--beam_size", "5"
     ]
 

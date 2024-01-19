@@ -12,7 +12,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.meteor_score import meteor_score
 import nltk
 # Data parameters
-data_folder = 'C:/Users/Asus/Downloads/ImagetoCaption-Project-/ImagetoCaption-Project-/Flickr8k_preprocessed'  # folder with data files saved by create_input_files.py
+data_folder = 'C:/work/Image-to-Caption-Final/Flickr8k_preprocessed'  # folder with data files saved by create_input_files.py
 data_name = 'flickr8k_5_cap_per_img_5_min_word_freq'  # base name shared by data files
 
 # Model parameters
@@ -44,7 +44,7 @@ def main():
     Training and validation.
     """
     global best_meteor, epochs_since_improvement, checkpoint, start_epoch, fine_tune_encoder, data_name, word_map
-    checkpoint = 'C:/Users/Asus/Downloads/ImagetoCaption-Project-/checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar' 
+    checkpoint = 'C:/work/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar' 
     
     # Read word map
     word_map_file = os.path.join(data_folder, 'WORDMAP_' + data_name + '.json')

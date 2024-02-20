@@ -13,15 +13,7 @@ import imageio
 def create_input_files(dataset, karpathy_json_path, image_folder, captions_per_image, min_word_freq, output_folder,
 max_len=100):
     """
-    Creates input files for training, validation, and test data.
-
-    :param dataset: name of dataset, one of 'coco', 'flickr8k', 'flickr30k'
-    :param karpathy_json_path: path of Karpathy JSON file with splits and captions
-    :param image_folder: folder with downloaded images
-    :param captions_per_image: number of captions to sample per image
-    :param min_word_freq: words occuring less frequently than this threshold are binned as <unk>s
-    :param output_folder: folder to save files
-    :param max_len: don't sample captions longer than this length
+    
     """
 
     assert dataset in {'flickr8k'}
@@ -266,7 +258,7 @@ class AverageMeter(object):
         self.count = 0
 
     def update(self, val, n=1):
-        print("---------------SHUBHA IN UPDATE FUNC OF UTILS------------------")
+
         self.val = val
         self.sum += val * n
         self.count += n

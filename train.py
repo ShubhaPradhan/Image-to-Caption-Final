@@ -11,23 +11,25 @@ from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.meteor_score import meteor_score
 import nltk
+import matplotlib.pyplot as plt
+import os
 # Data parameters
-data_folder = 'C:/work/Image-to-Caption-Final/Flickr8k_preprocessed'  # folder with data files saved by create_input_files.py
+data_folder = 'D:/Image-to-Caption-Final/Flickr8k_preprocessed'  # folder with data files saved by create_input_files.py
 data_name = 'flickr8k_5_cap_per_img_5_min_word_freq'  # base name shared by data files
-
+plot_dir = 'D:/Image-to-Caption-Final/plots'  # folder where plots are saved
 # Model parameters
 emb_dim = 512  # dimension of word embeddings
-attention_dim = 512  # dimension of attention linear layers
+attention_dim = 256  # dimension of attention linear layers
 decoder_dim = 512  # dimension of decoder RNN
-dropout = 0.5
+dropout = 0.6
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
 # Training parameters
 start_epoch = 0
-epochs = 350  # number of epochs to train for (if early stopping is not triggered)
+epochs = 600  # number of epochs to train for (if early stopping is not triggered)
 epochs_since_improvement = 0  # keeps track of number of epochs since there's been an improvement in validation BLEU
-batch_size = 32
+batch_size = 16
 workers = 1  # for data-loading; right now, only 1 works with h5py
 encoder_lr = 1e-3  # learning rate for encoder if fine-tuning
 decoder_lr = 4e-3  # learning rate for decoder
@@ -35,16 +37,19 @@ grad_clip = 5.  # clip gradients at an absolute value of
 alpha_c = 1.  # regularization parameter for 'doubly stochastic attention', as in the paper
 best_meteor = 0.  # BLEU-4 score right now
 print_freq = 100  # print training/validation stats every __ batches
-fine_tune_encoder = False  # fine-tune encoder?
+fine_tune_encoder = True  # fine-tune encoder?
 checkpoint = None  # path to checkpoint, None if none
+
+train_losses = []  # List to store training losses
+validation_metrics = []  # List to store validation metrics (METEOR)
 
 
 def main():
     """
     Training and validation.
     """
-    global best_meteor, epochs_since_improvement, checkpoint, start_epoch, fine_tune_encoder, data_name, word_map
-    checkpoint = 'C:/work/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar' 
+    global best_meteor, epochs_since_improvement, checkpoint, start_epoch, fine_tune_encoder, data_name, word_map, train_losses, validation_metrics
+    checkpoint = 'D:/Image-to-Caption-Final/checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar' 
     
     # Read word map
     word_map_file = os.path.join(data_folder, 'WORDMAP_' + data_name + '.json')
@@ -70,7 +75,7 @@ lr=decoder_lr)
 lr=encoder_lr) if fine_tune_encoder else None
 
     else:
-        print("---------------THIS IS ELSE STATEMENT----------------")
+
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint['epoch'] + 1
         epochs_since_improvement = checkpoint['epochs_since_improvement']
@@ -115,15 +120,17 @@ std=[0.229, 0.224, 0.225])
             if fine_tune_encoder:
                 adjust_learning_rate(encoder_optimizer, 0.8)
 
-        print("---------------------SHUBHA IN MAIN FUNC-------------------------")
+
         # One epoch's training
-        train(train_loader=train_loader,
+        epoch_train_loss =  train(train_loader=train_loader,
 encoder=encoder,
 decoder=decoder,
 criterion=criterion,
 encoder_optimizer=encoder_optimizer,
 decoder_optimizer=decoder_optimizer,
 epoch=epoch)
+        
+        train_losses.append(epoch_train_loss)
 
         # One epoch's validation
         recent_meteor = validate(val_loader=val_loader,
@@ -131,6 +138,8 @@ epoch=epoch)
                                 decoder=decoder,
                                 criterion=criterion,
                                 word_map_rev=word_map_rev)
+        
+        validation_metrics.append(recent_meteor)
 
         # Check if there was an improvement
         
@@ -145,6 +154,9 @@ epoch=epoch)
         # Save checkpoint
         save_checkpoint(data_name, epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer,
                         decoder_optimizer, recent_meteor, is_best)
+        
+        # Plot progress at the end of each epoch
+        plot_progress(train_losses, validation_metrics, epoch)
 
 
 
@@ -170,13 +182,13 @@ def train(train_loader, encoder, decoder, criterion, encoder_optimizer, decoder_
     top5accs = AverageMeter()  # top5 accuracy
 
     start = time.time()
-    print("------------TRAIN LOADER LENGTH: %d-----------------" % (len(train_loader)))
+ 
     # Batches
     for i, (imgs, caps, caplens) in enumerate(train_loader):
-        print("DATA_tIME: ")
+  
         data_time.update(time.time() - start)
 
-        print("---------------------SHUBHA IN TRAIN FUNC-------------------------")
+   
         # Move to GPU, if available
         imgs = imgs.to(device)
         caps = caps.to(device)
@@ -235,7 +247,39 @@ def train(train_loader, encoder, decoder, criterion, encoder_optimizer, decoder_
 batch_time=batch_time,
 data_time=data_time, loss=losses,
 top5=top5accs))
+            
+    
+    epoch_loss = losses.avg
+        
+    return epoch_loss
 
+    
+
+
+# After each batch, you can plot the loss and METEOR progress
+def plot_progress(train_losses, validation_metrics, epoch):
+    epochs = range(1, len(train_losses) + 1)
+
+    plt.figure(figsize=(12, 6))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_losses, label='Train Loss')
+    plt.title('Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, validation_metrics, label='Validation METEOR')
+    plt.title('Validation METEOR')
+    plt.xlabel('Epoch')
+    plt.ylabel('METEOR Score')
+
+    plt.tight_layout()
+
+    # Save the plot instead of showing it
+    plot_filename = os.path.join(plot_dir, f'plot_epoch_{epoch}.png')
+    plt.savefig(plot_filename)
+    plt.close()  # Close the figure to free memory
 
 def validate(val_loader, encoder, decoder, criterion, word_map_rev):
     """
@@ -274,7 +318,7 @@ def validate(val_loader, encoder, decoder, criterion, word_map_rev):
             # Forward prop.
             if encoder is not None:
                 imgs = encoder(imgs)
-            print(f"-----THIS IS DECODER-----${decoder(imgs,caps,caplens)}")
+       
             scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
 
             # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>

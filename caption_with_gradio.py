@@ -153,46 +153,6 @@ next_word != word_map['<end>']]
 
     return seq, alphas
 
-# THE ATTENTION IMAGE FOR EACH WORD IS BEING GENERATED AS A DIFFERENT IMAGE FILE HAVE TO CHANGE THIS TO A SINGLE IMAGE FILE
-
-# def visualize_att(image_path, seq, alphas, rev_word_map, output_dir, smooth=True):
-#     """
-#     Visualizes caption with weights at every word.
-#     Adapted from paper authors' repo: https://github.com/kelvinxu/arctic-captions/blob/master/alpha_visualization.ipynb
-#     :param image_path: path to image that has been captioned
-#     :param seq: caption
-#     :param alphas: weights
-#     :param rev_word_map: reverse word mapping, i.e. ix2word
-#     :param smooth: smooth weights?
-#     """
-#     image = Image.open(image_path)
-#     image = image.resize([14 * 24, 14 * 24], Image.LANCZOS)
-#      # Create the output directory if it doesn't exist
-#     if not os.path.exists(output_dir):
-#         os.makedirs(output_dir)
-
-#     words = [rev_word_map[ind] for ind in seq]
-
-#     for t in range(len(words)):
-#         if t > 50:
-#             break
-#         plt.subplot(int(np.ceil(len(words) / 5.)), 5, t + 1)
-#         plt.text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
-#         plt.imshow(image)
-#         current_alpha = alphas[t, :]
-#         if smooth:
-#             alpha = skimage.transform.pyramid_expand(current_alpha.numpy(), upscale=24, sigma=8)
-#         else:
-#             alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
-#         if t == 0:
-#             plt.imshow(alpha, alpha=0)
-#         else:
-#             plt.imshow(alpha, alpha=0.8)
-#         plt.set_cmap(cm.Greys_r)
-#         plt.axis('off')
-#         # Save the attention images to the output directory
-#         plt.savefig(os.path.join(output_dir, f'attention_{t}.png'))
-#         plt.clf()
 
 def visualize_att(image_path, seq, alphas, rev_word_map, output_file, smooth=True):
     """

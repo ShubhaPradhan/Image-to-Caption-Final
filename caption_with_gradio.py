@@ -10,8 +10,10 @@ import argparse
 from PIL import Image
 import imageio
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# OUTPUT DIRECTORY TO STORE THE ATTENTION MECHANISM IMAGES
+output_dir = 'D:/Image-to-Caption-Final/uploaded_images_with_attention'
 
 def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=3):
     """
@@ -36,7 +38,7 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
     img = np.resize(img, (256, 256, 3))
     img = img.transpose(2, 0, 1)
     img = img / 255.
-    img = torch.FloatTensor(img).to(device)
+    img = torch.FloatTensor(img)
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
 std=[0.229, 0.224, 0.225])
     transform = transforms.Compose([normalize])
@@ -56,16 +58,16 @@ std=[0.229, 0.224, 0.225])
     encoder_out = encoder_out.expand(k, num_pixels, encoder_dim)  # (k, num_pixels, encoder_dim)
 
     # Tensor to store top k previous words at each step; now they're just <start>
-    k_prev_words = torch.LongTensor([[word_map['<start>']]] * k).to(device)  # (k, 1)
+    k_prev_words = torch.LongTensor([[word_map['<start>']]] * k)  # (k, 1)
 
     # Tensor to store top k sequences; now they're just <start>
     seqs = k_prev_words  # (k, 1)
 
     # Tensor to store top k sequences' scores; now they're just 0
-    top_k_scores = torch.zeros(k, 1).to(device)  # (k, 1)
+    top_k_scores = torch.zeros(k, 1)  # (k, 1)
 
     # Tensor to store top k sequences' alphas; now they're just 1s
-    seqs_alpha = torch.ones(k, 1, enc_image_size, enc_image_size).to(device)  # (k, 1, enc_image_size, enc_image_size)
+    seqs_alpha = torch.ones(k, 1, enc_image_size, enc_image_size)  # (k, 1, enc_image_size, enc_image_size)
 
     # Lists to store completed sequences, their alphas and scores
     complete_seqs = list()
@@ -143,48 +145,71 @@ next_word != word_map['<end>']]
     i = complete_seqs_scores.index(max(complete_seqs_scores))
     seq = complete_seqs[i]
     alphas = complete_seqs_alpha[i]
+    print("shubha")
+
+    # DEBUGGIN CODE: SHUBHA
+    alphas_np = np.array(alphas)
+    print(alphas_np.shape)
 
     return seq, alphas
 
 
-def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
+def visualize_att(image_path, seq, alphas, rev_word_map, output_file, smooth=True):
     """
-    Visualizes caption with weights at every word.
-
+    Visualizes caption with weights at every word and saves the images in a single file.
     Adapted from paper authors' repo: https://github.com/kelvinxu/arctic-captions/blob/master/alpha_visualization.ipynb
 
     :param image_path: path to image that has been captioned
     :param seq: caption
     :param alphas: weights
     :param rev_word_map: reverse word mapping, i.e. ix2word
+    :param output_file: filename for the combined image
     :param smooth: smooth weights?
     """
+
+    # Get image name
+    image_name = os.path.basename(image_path)
+
+    # remove the file extension
+    image_name = os.path.splitext(image_name)[0]
+    
+    # Open the image
     image = Image.open(image_path)
     image = image.resize([14 * 24, 14 * 24], Image.LANCZOS)
 
     words = [rev_word_map[ind] for ind in seq]
 
-    for t in range(len(words)):
-        if t > 50:
-            break
-        plt.subplot(int(np.ceil(len(words) / 5.)), 5, t + 1)
+    num_words = len(words)
+    num_rows = (num_words + 3) // 4  # Calculate the number of rows needed
 
-        plt.text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
-        plt.imshow(image)
+    fig, axes = plt.subplots(nrows=num_rows, ncols=4, figsize=(16, num_rows * 4))
+
+    for t in range(num_words):
+        row = t // 4  # Calculate the row index
+        col = t % 4    # Calculate the column index
+
+        axes[row, col].text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
+        axes[row, col].imshow(image)
         current_alpha = alphas[t, :]
         if smooth:
             alpha = skimage.transform.pyramid_expand(current_alpha.numpy(), upscale=24, sigma=8)
         else:
             alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
         if t == 0:
-            plt.imshow(alpha, alpha=0)
+            axes[row, col].imshow(alpha, alpha=0)
         else:
-            plt.imshow(alpha, alpha=0.8)
-        plt.set_cmap(cm.Greys_r)
-        plt.axis('off')
-    plt.show()
+            axes[row, col].imshow(alpha, alpha=0.8)
+        axes[row, col].set_axis_off()
 
+    
+    # Remove empty subplots if there are any
+    for t in range(num_words, num_rows * 4):
+        row = t // 4
+        col = t % 4
+        fig.delaxes(axes[row, col])
 
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f'{image_name}_with_attention.png'))
 
 import os
 import datetime
@@ -193,16 +218,16 @@ import gradio as gr
 def generate_caption_with_gradio(image):
     # Generate a unique filename for the uploaded image
     image_filename = 'uploaded_image_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.jpg'
-    image_path = os.path.join('C:/work/Image-to-Caption-Final/', image_filename)
+    image_path = os.path.join('D:/Image-to-Caption-Final/', image_filename)
     
     # Save the uploaded image
     image.save(image_path)
 
     # Load the model
-    checkpoint = torch.load('C:/work/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar', map_location='cpu')
+    checkpoint = torch.load('D:/Image-to-Caption-Final/BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar', map_location='cpu')
 
-    # Load the word map
-    with open('C:/work/Image-to-Caption-Final/Flickr8k_preprocessed/WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json', 'r') as j:
+    # Load the word ma
+    with open('D:/Image-to-Caption-Final/Flickr8k_preprocessed/WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json', 'r') as j:
         word_map = json.load(j)
 
     # Construct the model
@@ -217,20 +242,34 @@ def generate_caption_with_gradio(image):
     
     
     # Call the existing function to generate the caption
-    caption, _ = caption_image_beam_search(encoder, decoder, image_path, word_map, 5)  # Assuming beam size is 5
-    
+    caption, alphas = caption_image_beam_search(encoder, decoder, image_path, word_map, 5)  # Assuming beam size is 5
+    alphas = torch.FloatTensor(alphas)
     
     # Convert the sequence of token IDs to words
     rev_word_map = {v: k for k, v in word_map.items()}  # Reverse word map
     caption_words = [rev_word_map.get(token, '<unk>') for token in caption]
     sentence = ' '.join(caption_words)
-    return sentence
-    return caption
+
+    # Visualize attention
+    visualize_att(image_path, caption, alphas, rev_word_map, output_dir)
+
+    # static graph image file path to show the plots
+    static_graph_path = 'D:/Image-to-Caption-Final/plots/plot_epoch_540.png'
+
+    # Get the attention image file path to show the attention images in gradio
+    # Get image name
+    image_name = os.path.basename(image_filename)
+
+    # remove the file extension
+    image_name = os.path.splitext(image_name)[0]
+    attention_image_path = os.path.join(output_dir, f'{image_name}_with_attention.png')
+
+    return caption, sentence, static_graph_path, attention_image_path
 
 iface = gr.Interface(
     fn=generate_caption_with_gradio, 
     inputs=gr.Image(type='pil', label='Upload Image'), 
-    outputs='text', 
+    outputs=[gr.Textbox(label='Word Map Caption'),gr.Textbox(label='Caption in Words'), gr.Image(label='Training Graph Plot' ), gr.Image(label='Attention Image')], 
     title='Image Caption Generator', 
     description='Upload an image to generate a caption.'
 )

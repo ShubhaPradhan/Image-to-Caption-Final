@@ -44,11 +44,13 @@ class Encoder(nn.Module):
 
         :param fine_tune: Allow?
         """
+        print("----------FINE TUNE----------")
         for p in self.resnet.parameters():
             p.requires_grad = False
         # If fine-tuning, only fine-tune convolutional blocks 2 through 4
         for c in list(self.resnet.children())[5:]:
             for p in c.parameters():
+                print("----------FINE TUNE FOR LOOPING----------")
                 p.requires_grad = fine_tune
 
 

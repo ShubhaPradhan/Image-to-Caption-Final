@@ -16,15 +16,6 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Define paths
-MODEL_PATH = os.path.join(BASE_DIR, 'image_caption_generator_model', 'BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar')
-WORDMAP_PATH = os.path.join(BASE_DIR, 'image_caption_generator_model', 'Flickr8k_preprocessed', 'WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json')
-UPLOADED_IMAGES_PATH = os.path.join(BASE_DIR, 'image_caption_generator_model', 'uploaded_images')
-ATTENTION_IMAGES_PATH = os.path.join(BASE_DIR, 'image_caption_generator_model', 'uploaded_images_with_attention')
-PLOTS_PATH = os.path.join(BASE_DIR, 'image_caption_generator_model', 'plots', 'plot_epoch_540.png')
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -128,14 +119,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 # Define the path for static files
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "image_caption_generator", "static"),
-]
-
+STATIC_URL = 'static/'
 # Define the path for media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'media')
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+STATICFILES_DIRS=(
+    os.path.join(BASE_DIR, 'static'),
+)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field

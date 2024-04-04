@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import datetime
 import torch
@@ -13,11 +12,14 @@ import torch.nn.functional as F
 from PIL import Image
 from django.http import JsonResponse
 from django.conf import settings
+import sys
 
+from .models import UploadedImage
+from .serializers import UploadedImageSerializer
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath('image_caption_generator_model')))
-sys.path.append(os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model'))
-
+BASE_DIR = settings.BASE_DIR
+# Add the 'models' directory to the Python path
+sys.path.append(os.path.join(BASE_DIR, 'static'))
 
 def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=3):
     """
@@ -217,7 +219,7 @@ def generate_caption(request):
     image_filename = 'uploaded_image_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.jpg'
     
     # Absolute path to save the uploaded image
-    image_directory = os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'uploaded_images')
+    image_directory = os.path.join(BASE_DIR, 'media', 'uploaded_images')
     os.makedirs(image_directory, exist_ok=True)  # Create the directory if it doesn't exist
     image_path = os.path.join(image_directory, image_filename)
     
@@ -228,12 +230,15 @@ def generate_caption(request):
             destination.write(chunk)
     
     # Load the model
-    checkpoint = torch.load(os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar'), map_location='cpu')
-    
-    # Load the word map
-    with open(os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'Flickr8k_preprocessed', 'WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json'), 'r') as j:
+
+    checkpoint = torch.load(os.path.join(settings.BASE_DIR, 'static', 'BEST_checkpoint_flickr8k_5_cap_per_img_5_min_word_freq.pth.tar'), map_location='cpu')
+
+
+    with open(os.path.join(BASE_DIR, 'static', 'WORDMAP_flickr8k_5_cap_per_img_5_min_word_freq.json'), 'r') as j:
         word_map = json.load(j)
     
+    
+    # Load the word map
     # construct the encoder and decoder models
     encoder = checkpoint['encoder']
     decoder = checkpoint['decoder']
@@ -251,23 +256,29 @@ def generate_caption(request):
     caption_words = [rev_word_map.get(token, '<unk>') for token in caption]
     sentence = ' '.join(caption_words)
     
-    # Visualize attention
-    visualize_att(image_path, caption, alphas, rev_word_map, os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'uploaded_images_with_attention'))
+   # Define the directory to save the attention image
+    attention_directory = os.path.join(BASE_DIR, 'media', 'uploaded_images_with_attention')
+    os.makedirs(attention_directory, exist_ok=True)  # Create the directory if it doesn't exist
     
-    # static graph image file path to show the plots
-    static_graph_path = os.path.join(BASE_DIR, 'image_caption_generator', 'image_caption_generator_model', 'plots', 'plot_epoch_540.png')
+    # Visualize attention
+    visualize_att(image_path, caption, alphas, rev_word_map, attention_directory)
+    
     
     # Get the attention image file path to show the attention images in gradio
     # Get image name
     image_name = os.path.basename(image_filename)
-    # remove the file extension
+    # Remove the file extension
     image_name = os.path.splitext(image_name)[0]
-    attention_image_path = os.path.join(settings.MEDIA_URL, 'uploaded_images_with_attention', f'{image_name}_with_attention.png')
-
-    static_graph_path = os.path.join(settings.MEDIA_URL, 'plots', 'plot_epoch_540.png')
     
-    return JsonResponse({
-        'caption': sentence,
-        "static_graph_path": static_graph_path,
-        "attention_image_path": attention_image_path,
-    })
+    print("image_filename", image_filename)
+    print("attention_image", f'{image_name}_with_attention.png')
+    # Serialize the data
+    uploaded_image = UploadedImage(
+        image=image_filename,
+        uploaded_at=datetime.datetime.now(),
+        caption=sentence,
+        attention_image=f'{image_name}_with_attention.png'
+    )
+    serializer = UploadedImageSerializer(uploaded_image, context={'request': request})
+    
+    return JsonResponse(serializer.data)

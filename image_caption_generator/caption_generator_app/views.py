@@ -10,7 +10,7 @@ import skimage.transform
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
-from django.http import JsonResponse
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.conf import settings
 import sys
 
@@ -213,8 +213,24 @@ def visualize_att(image_path, seq, alphas, rev_word_map, output_file, smooth=Tru
     plt.tight_layout()
     plt.savefig(os.path.join(output_file, f'{image_name}_with_attention.png'))
 
+
+# ALLOWED IMAGE EXTENSIONS
+ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+
+def allowed_file(filename):
+    return any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS)
+
 @csrf_exempt
 def generate_caption(request):
+    # Check if the image file is uploaded
+    if 'image' not in request.FILES:
+        return JsonResponse({'error': 'No image file uploaded.'})
+
+    # Check the file extension
+    image_data = request.FILES['image']
+    if not allowed_file(image_data.name):
+        return JsonResponse({'error': 'Invalid file type. Only JPG, JPEG, and PNG are allowed.'})
+    
     # Generate a unique filename for the uploaded image
     image_filename = 'uploaded_image_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.jpg'
     
